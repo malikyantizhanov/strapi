@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  strapiDB:
+    image: postgres:15-alpine
+    container_name: strapiDB
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: strapi
+      POSTGRES_USER: strapi
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-strapi}
+    volumes:
+      - strapi-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strapi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  strapi:
+    image: node:20-alpine
+    container_name: strapi
+    restart: unless-stopped
+    working_dir: /opt/app
+    volumes:
+      - ./:/opt/app
+      - /opt/app/node_modules
+    ports:
+      - "1337:1337"
+    environment:
+      NODE_ENV: development
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: strapiDB
+      DATABASE_PORT: 5432
+      DATABASE_NAME: strapi
+      DATABASE_USERNAME: strapi
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-strapi}
+      HOST: 0.0.0.0
+      PORT: 1337
+    command: sh -c "yarn install && yarn develop"
+    depends_on:
+      strapiDB:
+        condition: service_healthy
+
+volumes:
+  strapi-data:
+    driver: local
